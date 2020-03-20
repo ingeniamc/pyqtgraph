@@ -347,8 +347,9 @@ class PlotDataItem(GraphicsObject):
         Clear any data displayed by this item and display new data.
         See :func:`__init__() <pyqtgraph.PlotDataItem.__init__>` for details; it accepts the same arguments.
         """
-        #self.clear()
+        # self.clear()
         profiler = debug.Profiler()
+        valid_arguments = True
         y = None
         x = None
         if len(args) == 1:
@@ -359,117 +360,124 @@ class PlotDataItem(GraphicsObject):
             elif dt == 'listOfValues':
                 y = np.array(data)
             elif dt == 'Nx2array':
-                x = data[:,0]
-                y = data[:,1]
+                x = data[:, 0]
+                y = data[:, 1]
             elif dt == 'recarray' or dt == 'dictOfLists':
                 if 'x' in data:
                     x = np.array(data['x'])
                 if 'y' in data:
                     y = np.array(data['y'])
-            elif dt ==  'listOfDicts':
+            elif dt == 'listOfDicts':
                 if 'x' in data[0]:
-                    x = np.array([d.get('x',None) for d in data])
+                    x = np.array([d.get('x', None) for d in data])
                 if 'y' in data[0]:
-                    y = np.array([d.get('y',None) for d in data])
-                for k in ['data', 'symbolSize', 'symbolPen', 'symbolBrush', 'symbolShape']:
+                    y = np.array([d.get('y', None) for d in data])
+                for k in ['data', 'symbolSize', 'symbolPen', 'symbolBrush',
+                          'symbolShape']:
                     if k in data:
                         kargs[k] = [d.get(k, None) for d in data]
             elif dt == 'MetaArray':
                 y = data.view(np.ndarray)
                 x = data.xvals(0).view(np.ndarray)
             else:
-                raise Exception('Invalid data type %s' % type(data))
-            
+                valid_arguments = False
+                print('Invalid data type %s' % type(data))
+
         elif len(args) == 2:
             seq = ('listOfValues', 'MetaArray', 'empty')
             dtyp = dataType(args[0]), dataType(args[1])
             if dtyp[0] not in seq or dtyp[1] not in seq:
-                raise Exception('When passing two unnamed arguments, both must be a list or array of values. (got %s, %s)' % (str(type(args[0])), str(type(args[1]))))
-            if not isinstance(args[0], np.ndarray):
-                #x = np.array(args[0])
-                if dtyp[0] == 'MetaArray':
-                    x = args[0].asarray()
+                valid_arguments = False
+                print(
+                    'When passing two unnamed arguments, both must be a list or array of values. (got %s, %s)' % (
+                    str(type(args[0])), str(type(args[1]))))
+            if valid_arguments:
+                if not isinstance(args[0], np.ndarray):
+                    # x = np.array(args[0])
+                    if dtyp[0] == 'MetaArray':
+                        x = args[0].asarray()
+                    else:
+                        x = np.array(args[0])
                 else:
-                    x = np.array(args[0])
-            else:
-                x = args[0].view(np.ndarray)
-            if not isinstance(args[1], np.ndarray):
-                #y = np.array(args[1])
-                if dtyp[1] == 'MetaArray':
-                    y = args[1].asarray()
+                    x = args[0].view(np.ndarray)
+                if not isinstance(args[1], np.ndarray):
+                    # y = np.array(args[1])
+                    if dtyp[1] == 'MetaArray':
+                        y = args[1].asarray()
+                    else:
+                        y = np.array(args[1])
                 else:
-                    y = np.array(args[1])
-            else:
-                y = args[1].view(np.ndarray)
-            
-        if 'x' in kargs:
-            x = kargs['x']
-        if 'y' in kargs:
-            y = kargs['y']
+                    y = args[1].view(np.ndarray)
+        if valid_arguments:
+            if 'x' in kargs:
+                x = kargs['x']
+            if 'y' in kargs:
+                y = kargs['y']
 
-        profiler('interpret data')
-        ## pull in all style arguments. 
-        ## Use self.opts to fill in anything not present in kargs.
-        
-        if 'name' in kargs:
-            self.opts['name'] = kargs['name']
-        if 'connect' in kargs:
-            self.opts['connect'] = kargs['connect']
+            profiler('interpret data')
+            ## pull in all style arguments.
+            ## Use self.opts to fill in anything not present in kargs.
 
-        ## if symbol pen/brush are given with no symbol, then assume symbol is 'o'
-        
-        if 'symbol' not in kargs and ('symbolPen' in kargs or 'symbolBrush' in kargs or 'symbolSize' in kargs):
-            kargs['symbol'] = 'o'
-            
-        if 'brush' in kargs:
-            kargs['fillBrush'] = kargs['brush']
-            
-        for k in list(self.opts.keys()):
-            if k in kargs:
-                self.opts[k] = kargs[k]
-                
-        #curveArgs = {}
-        #for k in ['pen', 'shadowPen', 'fillLevel', 'brush']:
-            #if k in kargs:
-                #self.opts[k] = kargs[k]
-            #curveArgs[k] = self.opts[k]
-            
-        #scatterArgs = {}
-        #for k,v in [('symbolPen','pen'), ('symbolBrush','brush'), ('symbol','symbol')]:
-            #if k in kargs:
-                #self.opts[k] = kargs[k]
-            #scatterArgs[v] = self.opts[k]
-        
+            if 'name' in kargs:
+                self.opts['name'] = kargs['name']
+            if 'connect' in kargs:
+                self.opts['connect'] = kargs['connect']
 
-        if y is None:
+            ## if symbol pen/brush are given with no symbol, then assume symbol is 'o'
+
+            if 'symbol' not in kargs and (
+                    'symbolPen' in kargs or 'symbolBrush' in kargs or 'symbolSize' in kargs):
+                kargs['symbol'] = 'o'
+
+            if 'brush' in kargs:
+                kargs['fillBrush'] = kargs['brush']
+
+            for k in list(self.opts.keys()):
+                if k in kargs:
+                    self.opts[k] = kargs[k]
+
+            # curveArgs = {}
+            # for k in ['pen', 'shadowPen', 'fillLevel', 'brush']:
+            # if k in kargs:
+            # self.opts[k] = kargs[k]
+            # curveArgs[k] = self.opts[k]
+
+            # scatterArgs = {}
+            # for k,v in [('symbolPen','pen'), ('symbolBrush','brush'), ('symbol','symbol')]:
+            # if k in kargs:
+            # self.opts[k] = kargs[k]
+            # scatterArgs[v] = self.opts[k]
+
+            if y is None:
+                self.updateItems()
+                profiler('update items')
+                return
+            if y is not None and x is None:
+                x = np.arange(len(y))
+
+            if isinstance(x, list):
+                x = np.array(x)
+            if isinstance(y, list):
+                y = np.array(y)
+
+            self.xData = x.view(
+                np.ndarray)  ## one last check to make sure there are no MetaArrays getting by
+            self.yData = y.view(np.ndarray)
+            self.xClean = self.yClean = None
+            self.xDisp = None
+            self.yDisp = None
+            profiler('set data')
+
             self.updateItems()
             profiler('update items')
-            return
-        if y is not None and x is None:
-            x = np.arange(len(y))
-        
-        if isinstance(x, list):
-            x = np.array(x)
-        if isinstance(y, list):
-            y = np.array(y)
-        
-        self.xData = x.view(np.ndarray)  ## one last check to make sure there are no MetaArrays getting by
-        self.yData = y.view(np.ndarray)
-        self.xClean = self.yClean = None
-        self.xDisp = None
-        self.yDisp = None
-        profiler('set data')
-        
-        self.updateItems()
-        profiler('update items')
-        
-        self.informViewBoundsChanged()
-        #view = self.getViewBox()
-        #if view is not None:
-            #view.itemBoundsChanged(self)  ## inform view so it can update its range if it wants
-        
-        self.sigPlotChanged.emit(self)
-        profiler('emit')
+
+            self.informViewBoundsChanged()
+            # view = self.getViewBox()
+            # if view is not None:
+            # view.itemBoundsChanged(self)  ## inform view so it can update its range if it wants
+
+            self.sigPlotChanged.emit(self)
+            profiler('emit')
 
     def updateItems(self):
         

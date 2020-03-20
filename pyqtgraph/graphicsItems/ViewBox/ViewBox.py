@@ -486,7 +486,8 @@ class ViewBox(GraphicsWidget):
         if self.state['aspectLocked'] is False: # (interferes with aspect locking)
             self.state['targetRange'] = [self.state['viewRange'][0][:], self.state['viewRange'][1][:]]
 
-    def setRange(self, rect=None, xRange=None, yRange=None, padding=None, update=True, disableAutoRange=True):
+    def setRange(self, rect=None, xRange=None, yRange=None, padding=None,
+                 update=True, disableAutoRange=True):
         """
         Set the visible range of the ViewBox.
         Must specify at least one of *rect*, *xRange*, or *yRange*.
@@ -506,15 +507,17 @@ class ViewBox(GraphicsWidget):
         ================== =====================================================================
 
         """
-        #print self.name, "ViewBox.setRange", rect, xRange, yRange, padding
-        #import traceback
-        #traceback.print_stack()
+        # print self.name, "ViewBox.setRange", rect, xRange, yRange, padding
+        # import traceback
+        # traceback.print_stack()
 
-        changes = {}   # axes
+        changes = {}  # axes
         setRequested = [False, False]
+        valid_arguments = True
 
         if rect is not None:
-            changes = {0: [rect.left(), rect.right()], 1: [rect.top(), rect.bottom()]}
+            changes = {0: [rect.left(), rect.right()],
+                       1: [rect.top(), rect.bottom()]}
             setRequested = [True, True]
         if xRange is not None:
             changes[0] = xRange
@@ -525,71 +528,83 @@ class ViewBox(GraphicsWidget):
 
         if len(changes) == 0:
             print(rect)
-            raise Exception("Must specify at least one of rect, xRange, or yRange. (gave rect=%s)" % str(type(rect)))
+            valid_arguments = False
+            print(
+                "Must specify at least one of rect, xRange, or yRange. (gave rect=%s)" % str(
+                    type(rect))
+            )
 
-        # Update axes one at a time
-        changed = [False, False]
-        for ax, range in changes.items():
-            mn = min(range)
-            mx = max(range)
+        if valid_arguments:
+            # Update axes one at a time
+            changed = [False, False]
+            for ax, range in changes.items():
+                mn = min(range)
+                mx = max(range)
 
-            # If we requested 0 range, try to preserve previous scale.
-            # Otherwise just pick an arbitrary scale.
-            if mn == mx:
-                dy = self.state['viewRange'][ax][1] - self.state['viewRange'][ax][0]
-                if dy == 0:
-                    dy = 1
-                mn -= dy*0.5
-                mx += dy*0.5
-                xpad = 0.0
+                # If we requested 0 range, try to preserve previous scale.
+                # Otherwise just pick an arbitrary scale.
+                if mn == mx:
+                    dy = self.state['viewRange'][ax][1] - \
+                         self.state['viewRange'][ax][0]
+                    if dy == 0:
+                        dy = 1
+                    mn -= dy * 0.5
+                    mx += dy * 0.5
+                    xpad = 0.0
 
-            # Make sure no nan/inf get through
-            if not all(np.isfinite([mn, mx])):
-                raise Exception("Cannot set range [%s, %s]" % (str(mn), str(mx)))
+                # Make sure no nan/inf get through
+                if not all(np.isfinite([mn, mx])):
+                    valid_arguments = False
+                    print("Cannot set range [%s, %s]" % (str(mn), str(mx)))
 
-            # Apply padding
-            if padding is None:
-                xpad = self.suggestPadding(ax)
-            else:
-                xpad = padding
-            p = (mx-mn) * xpad
-            mn -= p
-            mx += p
+                if valid_arguments:
+                    # Apply padding
+                    if padding is None:
+                        xpad = self.suggestPadding(ax)
+                    else:
+                        xpad = padding
+                    p = (mx - mn) * xpad
+                    mn -= p
+                    mx += p
 
-            # Set target range
-            if self.state['targetRange'][ax] != [mn, mx]:
-                self.state['targetRange'][ax] = [mn, mx]
-                changed[ax] = True
+                    # Set target range
+                    if self.state['targetRange'][ax] != [mn, mx]:
+                        self.state['targetRange'][ax] = [mn, mx]
+                        changed[ax] = True
 
-        # Update viewRange to match targetRange as closely as possible while
-        # accounting for aspect ratio constraint
-        lockX, lockY = setRequested
-        if lockX and lockY:
-            lockX = False
-            lockY = False
-        self.updateViewRange(lockX, lockY)
+        if valid_arguments:
+            # Update viewRange to match targetRange as closely as possible while
+            # accounting for aspect ratio constraint
+            lockX, lockY = setRequested
+            if lockX and lockY:
+                lockX = False
+                lockY = False
+            self.updateViewRange(lockX, lockY)
 
-        # Disable auto-range for each axis that was requested to be set
-        if disableAutoRange:
-            xOff = False if setRequested[0] else None
-            yOff = False if setRequested[1] else None
-            self.enableAutoRange(x=xOff, y=yOff)
-            changed.append(True)
+            # Disable auto-range for each axis that was requested to be set
+            if disableAutoRange:
+                xOff = False if setRequested[0] else None
+                yOff = False if setRequested[1] else None
+                self.enableAutoRange(x=xOff, y=yOff)
+                changed.append(True)
 
-        # If nothing has changed, we are done.
-        if any(changed):
-            # Update target rect for debugging
-            if self.target.isVisible():
-                self.target.setRect(self.mapRectFromItem(self.childGroup, self.targetRect()))
+            # If nothing has changed, we are done.
+            if any(changed):
+                # Update target rect for debugging
+                if self.target.isVisible():
+                    self.target.setRect(self.mapRectFromItem(self.childGroup,
+                                                             self.targetRect()))
 
-            # If ortho axes have auto-visible-only, update them now
-            # Note that aspect ratio constraints and auto-visible probably do not work together..
-            if changed[0] and self.state['autoVisibleOnly'][1] and (self.state['autoRange'][0] is not False):
-                self._autoRangeNeedsUpdate = True
-            elif changed[1] and self.state['autoVisibleOnly'][0] and (self.state['autoRange'][1] is not False):
-                self._autoRangeNeedsUpdate = True
+                # If ortho axes have auto-visible-only, update them now
+                # Note that aspect ratio constraints and auto-visible probably do not work together..
+                if changed[0] and self.state['autoVisibleOnly'][1] and (
+                        self.state['autoRange'][0] is not False):
+                    self._autoRangeNeedsUpdate = True
+                elif changed[1] and self.state['autoVisibleOnly'][0] and (
+                        self.state['autoRange'][1] is not False):
+                    self._autoRangeNeedsUpdate = True
 
-            self.sigStateChanged.emit(self)
+                self.sigStateChanged.emit(self)
 
     def setYRange(self, min, max, padding=None, update=True):
         """
