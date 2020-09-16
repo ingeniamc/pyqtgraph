@@ -192,7 +192,7 @@ class GraphicsScene(QtGui.QGraphicsScene):
                                 self.dragButtons) == 0)  ## If this is the first button to be dragged, then init=True
                             self.dragButtons.append(int(btn))
                         except:
-                            # Ignored exception. Failed mouse move event.
+                            # TODO: Improve error catching. Ignored exception (List out of range).
                             pass
 
                 ## If we have dragged buttons, deliver a drag event
