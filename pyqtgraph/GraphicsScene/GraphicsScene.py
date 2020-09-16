@@ -163,16 +163,16 @@ class GraphicsScene(QtGui.QGraphicsScene):
                 if i.isEnabled() and i.isVisible() and int(i.flags() & i.ItemIsFocusable) > 0:
                     i.setFocus(QtCore.Qt.MouseFocusReason)
                     break
-        
+
     def mouseMoveEvent(self, ev):
         self.sigMouseMoved.emit(ev.scenePos())
-        
+
         ## First allow QGraphicsScene to deliver hoverEnter/Move/ExitEvents
         QtGui.QGraphicsScene.mouseMoveEvent(self, ev)
-        
+
         ## Next deliver our own HoverEvents
         self.sendHoverEvents(ev)
-        
+
         if int(ev.buttons()) != 0:  ## button is pressed; send mouseMoveEvents and mouseDragEvents
             QtGui.QGraphicsScene.mouseMoveEvent(self, ev)
             if self.mouseGrabberItem() is None:
@@ -183,13 +183,18 @@ class GraphicsScene(QtGui.QGraphicsScene):
                     if int(ev.buttons() & btn) == 0:
                         continue
                     if int(btn) not in self.dragButtons:  ## see if we've dragged far enough yet
-                        cev = [e for e in self.clickEvents if int(e.button()) == int(btn)][0]
-                        dist = Point(ev.scenePos() - cev.scenePos()).length()
-                        if dist == 0 or (dist < self._moveDistance and now - cev.time() < self.minDragTime):
-                            continue
-                        init = init or (len(self.dragButtons) == 0)  ## If this is the first button to be dragged, then init=True
-                        self.dragButtons.append(int(btn))
-                        
+                        try:
+                            cev = [e for e in self.clickEvents if int(e.button()) == int(btn)][0]
+                            dist = Point(ev.scenePos() - cev.scenePos()).length()
+                            if dist == 0 or (dist < self._moveDistance and now - cev.time() < self.minDragTime):
+                                continue
+                            init = init or (len(
+                                self.dragButtons) == 0)  ## If this is the first button to be dragged, then init=True
+                            self.dragButtons.append(int(btn))
+                        except:
+                            # TODO: Improve error catching. Ignored exception (List out of range).
+                            pass
+
                 ## If we have dragged buttons, deliver a drag event
                 if len(self.dragButtons) > 0:
                     if self.sendDragEvent(ev, init=init):
