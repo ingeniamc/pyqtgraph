@@ -36,7 +36,6 @@ class ExportDialog(QtGui.QWidget):
         self.ui.copyBtn.clicked.connect(self.copyClicked)
         self.ui.itemTree.currentItemChanged.connect(self.exportItemChanged)
         self.ui.formatList.currentItemChanged.connect(self.exportFormatChanged)
-        
 
     def show(self, item=None):
         if item is not None:
@@ -84,8 +83,7 @@ class ExportDialog(QtGui.QWidget):
             
         for ch in item.childItems():
             self.updateItemTree(ch, treeItem, select=select)
-        
-            
+
     def exportItemChanged(self, item, prev):
         if item is None:
             return
@@ -127,7 +125,10 @@ class ExportDialog(QtGui.QWidget):
         else:
             self.ui.paramTree.setParameters(params)
         self.currentExporter = exp
-        if "CSV" in self.currentExporter.Name and not isinstance(self.currentExporter.item, PlotItem):
+        if (isinstance(self.currentExporter, exporters.CSVExporter) or
+            isinstance(self.currentExporter, exporters.MatplotlibExporter) or
+            isinstance(self.currentExporter, exporters.HDF5Exporter)) \
+                and not isinstance(self.currentExporter.item, PlotItem):
             self.ui.exportBtn.setEnabled(False)
         else:
             self.ui.exportBtn.setEnabled(True)
