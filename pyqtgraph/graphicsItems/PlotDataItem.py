@@ -347,8 +347,9 @@ class PlotDataItem(GraphicsObject):
         Clear any data displayed by this item and display new data.
         See :func:`__init__() <pyqtgraph.PlotDataItem.__init__>` for details; it accepts the same arguments.
         """
-        #self.clear()
+        # self.clear()
         profiler = debug.Profiler()
+        valid_arguments = True
         y = None
         x = None
         if len(args) == 1:
@@ -359,115 +360,124 @@ class PlotDataItem(GraphicsObject):
             elif dt == 'listOfValues':
                 y = np.array(data)
             elif dt == 'Nx2array':
-                x = data[:,0]
-                y = data[:,1]
+                x = data[:, 0]
+                y = data[:, 1]
             elif dt == 'recarray' or dt == 'dictOfLists':
                 if 'x' in data:
                     x = np.array(data['x'])
                 if 'y' in data:
                     y = np.array(data['y'])
-            elif dt ==  'listOfDicts':
+            elif dt == 'listOfDicts':
                 if 'x' in data[0]:
-                    x = np.array([d.get('x',None) for d in data])
+                    x = np.array([d.get('x', None) for d in data])
                 if 'y' in data[0]:
-                    y = np.array([d.get('y',None) for d in data])
-                for k in ['data', 'symbolSize', 'symbolPen', 'symbolBrush', 'symbolShape']:
+                    y = np.array([d.get('y', None) for d in data])
+                for k in ['data', 'symbolSize', 'symbolPen', 'symbolBrush',
+                          'symbolShape']:
                     if k in data:
                         kargs[k] = [d.get(k, None) for d in data]
             elif dt == 'MetaArray':
                 y = data.view(np.ndarray)
                 x = data.xvals(0).view(np.ndarray)
             else:
-                raise Exception('Invalid data type %s' % type(data))
-            
+                valid_arguments = False
+                print('Invalid data type %s' % type(data))
+
         elif len(args) == 2:
             seq = ('listOfValues', 'MetaArray', 'empty')
             dtyp = dataType(args[0]), dataType(args[1])
             if dtyp[0] not in seq or dtyp[1] not in seq:
-                raise Exception('When passing two unnamed arguments, both must be a list or array of values. (got %s, %s)' % (str(type(args[0])), str(type(args[1]))))
-            if not isinstance(args[0], np.ndarray):
-                #x = np.array(args[0])
-                if dtyp[0] == 'MetaArray':
-                    x = args[0].asarray()
+                valid_arguments = False
+                print(
+                    'When passing two unnamed arguments, both must be a list or array of values. (got %s, %s)' % (
+                    str(type(args[0])), str(type(args[1]))))
+            if valid_arguments:
+                if not isinstance(args[0], np.ndarray):
+                    # x = np.array(args[0])
+                    if dtyp[0] == 'MetaArray':
+                        x = args[0].asarray()
+                    else:
+                        x = np.array(args[0])
                 else:
-                    x = np.array(args[0])
-            else:
-                x = args[0].view(np.ndarray)
-            if not isinstance(args[1], np.ndarray):
-                #y = np.array(args[1])
-                if dtyp[1] == 'MetaArray':
-                    y = args[1].asarray()
+                    x = args[0].view(np.ndarray)
+                if not isinstance(args[1], np.ndarray):
+                    # y = np.array(args[1])
+                    if dtyp[1] == 'MetaArray':
+                        y = args[1].asarray()
+                    else:
+                        y = np.array(args[1])
                 else:
-                    y = np.array(args[1])
-            else:
-                y = args[1].view(np.ndarray)
-            
-        if 'x' in kargs:
-            x = kargs['x']
-        if 'y' in kargs:
-            y = kargs['y']
+                    y = args[1].view(np.ndarray)
+        if valid_arguments:
+            if 'x' in kargs:
+                x = kargs['x']
+            if 'y' in kargs:
+                y = kargs['y']
 
-        profiler('interpret data')
-        ## pull in all style arguments. 
-        ## Use self.opts to fill in anything not present in kargs.
-        
-        if 'name' in kargs:
-            self.opts['name'] = kargs['name']
-        if 'connect' in kargs:
-            self.opts['connect'] = kargs['connect']
+            profiler('interpret data')
+            ## pull in all style arguments.
+            ## Use self.opts to fill in anything not present in kargs.
 
-        ## if symbol pen/brush are given with no symbol, then assume symbol is 'o'
-        
-        if 'symbol' not in kargs and ('symbolPen' in kargs or 'symbolBrush' in kargs or 'symbolSize' in kargs):
-            kargs['symbol'] = 'o'
-            
-        if 'brush' in kargs:
-            kargs['fillBrush'] = kargs['brush']
-            
-        for k in list(self.opts.keys()):
-            if k in kargs:
-                self.opts[k] = kargs[k]
-                
-        #curveArgs = {}
-        #for k in ['pen', 'shadowPen', 'fillLevel', 'brush']:
-            #if k in kargs:
-                #self.opts[k] = kargs[k]
-            #curveArgs[k] = self.opts[k]
-            
-        #scatterArgs = {}
-        #for k,v in [('symbolPen','pen'), ('symbolBrush','brush'), ('symbol','symbol')]:
-            #if k in kargs:
-                #self.opts[k] = kargs[k]
-            #scatterArgs[v] = self.opts[k]
-        
+            if 'name' in kargs:
+                self.opts['name'] = kargs['name']
+            if 'connect' in kargs:
+                self.opts['connect'] = kargs['connect']
 
-        if y is None:
-            return
-        if y is not None and x is None:
-            x = np.arange(len(y))
-        
-        if isinstance(x, list):
-            x = np.array(x)
-        if isinstance(y, list):
-            y = np.array(y)
-        
-        self.xData = x.view(np.ndarray)  ## one last check to make sure there are no MetaArrays getting by
-        self.yData = y.view(np.ndarray)
-        self.xClean = self.yClean = None
-        self.xDisp = None
-        self.yDisp = None
-        profiler('set data')
-        
-        self.updateItems()
-        profiler('update items')
-        
-        self.informViewBoundsChanged()
-        #view = self.getViewBox()
-        #if view is not None:
-            #view.itemBoundsChanged(self)  ## inform view so it can update its range if it wants
-        
-        self.sigPlotChanged.emit(self)
-        profiler('emit')
+            ## if symbol pen/brush are given with no symbol, then assume symbol is 'o'
+
+            if 'symbol' not in kargs and (
+                    'symbolPen' in kargs or 'symbolBrush' in kargs or 'symbolSize' in kargs):
+                kargs['symbol'] = 'o'
+
+            if 'brush' in kargs:
+                kargs['fillBrush'] = kargs['brush']
+
+            for k in list(self.opts.keys()):
+                if k in kargs:
+                    self.opts[k] = kargs[k]
+
+            # curveArgs = {}
+            # for k in ['pen', 'shadowPen', 'fillLevel', 'brush']:
+            # if k in kargs:
+            # self.opts[k] = kargs[k]
+            # curveArgs[k] = self.opts[k]
+
+            # scatterArgs = {}
+            # for k,v in [('symbolPen','pen'), ('symbolBrush','brush'), ('symbol','symbol')]:
+            # if k in kargs:
+            # self.opts[k] = kargs[k]
+            # scatterArgs[v] = self.opts[k]
+
+            if y is None:
+                self.updateItems()
+                profiler('update items')
+                return
+            if y is not None and x is None:
+                x = np.arange(len(y))
+
+            if isinstance(x, list):
+                x = np.array(x)
+            if isinstance(y, list):
+                y = np.array(y)
+
+            self.xData = x.view(
+                np.ndarray)  ## one last check to make sure there are no MetaArrays getting by
+            self.yData = y.view(np.ndarray)
+            self.xClean = self.yClean = None
+            self.xDisp = None
+            self.yDisp = None
+            profiler('set data')
+
+            self.updateItems()
+            profiler('update items')
+
+            self.informViewBoundsChanged()
+            # view = self.getViewBox()
+            # if view is not None:
+            # view.itemBoundsChanged(self)  ## inform view so it can update its range if it wants
+
+            self.sigPlotChanged.emit(self)
+            profiler('emit')
 
     def updateItems(self):
         
@@ -490,6 +500,9 @@ class PlotDataItem(GraphicsObject):
             self.curve.hide()
         
         if scatterArgs['symbol'] is not None:
+            
+            if self.opts.get('stepMode', False) is True:
+                x = 0.5 * (x[:-1] + x[1:])                
             self.scatter.setData(x=x, y=y, **scatterArgs)
             self.scatter.show()
         else:
@@ -500,45 +513,22 @@ class PlotDataItem(GraphicsObject):
         if self.xData is None:
             return (None, None)
         
-        #if self.xClean is None:
-            #nanMask = np.isnan(self.xData) | np.isnan(self.yData) | np.isinf(self.xData) | np.isinf(self.yData)
-            #if nanMask.any():
-                #self.dataMask = ~nanMask
-                #self.xClean = self.xData[self.dataMask]
-                #self.yClean = self.yData[self.dataMask]
-            #else:
-                #self.dataMask = None
-                #self.xClean = self.xData
-                #self.yClean = self.yData
-            
         if self.xDisp is None:
             x = self.xData
             y = self.yData
             
-            
-            #ds = self.opts['downsample']
-            #if isinstance(ds, int) and ds > 1:
-                #x = x[::ds]
-                ##y = resample(y[:len(x)*ds], len(x))  ## scipy.signal.resample causes nasty ringing
-                #y = y[::ds]
             if self.opts['fftMode']:
                 x,y = self._fourierTransform(x, y)
                 # Ignore the first bin for fft data if we have a logx scale
                 if self.opts['logMode'][0]:
                     x=x[1:]
-                    y=y[1:]                
-            if self.opts['logMode'][0]:
-                x = np.log10(x)
-            if self.opts['logMode'][1]:
-                y = np.log10(y)
-            #if any(self.opts['logMode']):  ## re-check for NANs after log
-                #nanMask = np.isinf(x) | np.isinf(y) | np.isnan(x) | np.isnan(y)
-                #if any(nanMask):
-                    #self.dataMask = ~nanMask
-                    #x = x[self.dataMask]
-                    #y = y[self.dataMask]
-                #else:
-                    #self.dataMask = None
+                    y=y[1:]
+                    
+            with np.errstate(divide='ignore'):
+                if self.opts['logMode'][0]:
+                    x = np.log10(x)
+                if self.opts['logMode'][1]:
+                    y = np.log10(y)
                     
             ds = self.opts['downsample']
             if not isinstance(ds, int):
@@ -547,25 +537,39 @@ class PlotDataItem(GraphicsObject):
             if self.opts['autoDownsample']:
                 # this option presumes that x-values have uniform spacing
                 range = self.viewRect()
-                if range is not None:
+                if range is not None and len(x) > 1:
                     dx = float(x[-1]-x[0]) / (len(x)-1)
-                    x0 = (range.left()-x[0]) / dx
-                    x1 = (range.right()-x[0]) / dx
-                    width = self.getViewBox().width()
-                    if width != 0.0:
-                        ds = int(max(1, int((x1-x0) / (width*self.opts['autoDownsampleFactor']))))
-                    ## downsampling is expensive; delay until after clipping.
+                    if dx != 0.0:
+                        x0 = (range.left()-x[0]) / dx
+                        x1 = (range.right()-x[0]) / dx
+                        width = self.getViewBox().width()
+                        if width != 0.0:
+                            ds = int(max(1, int((x1-x0) / (width*self.opts['autoDownsampleFactor']))))
+                        ## downsampling is expensive; delay until after clipping.
             
             if self.opts['clipToView']:
                 view = self.getViewBox()
                 if view is None or not view.autoRangeEnabled()[0]:
-                    # this option presumes that x-values have uniform spacing
+                    # this option presumes that x-values are in increasing order
                     range = self.viewRect()
                     if range is not None and len(x) > 1:
+                        # clip to visible region extended by downsampling value, assuming
+                        # uniform spacing of x-values, has O(1) performance
                         dx = float(x[-1]-x[0]) / (len(x)-1)
-                        # clip to visible region extended by downsampling value
-                        x0 = np.clip(int((range.left()-x[0])/dx)-1*ds , 0, len(x)-1)
-                        x1 = np.clip(int((range.right()-x[0])/dx)+2*ds , 0, len(x)-1)
+                        x0 = np.clip(int((range.left()-x[0])/dx) - 1*ds, 0, len(x)-1)
+                        x1 = np.clip(int((range.right()-x[0])/dx) + 2*ds, 0, len(x)-1)
+                        
+                        # if data has been clipped too strongly (in case of non-uniform 
+                        # spacing of x-values), refine the clipping region as required
+                        # worst case performance: O(log(n))
+                        # best case performance: O(1)
+                        if x[x0] > range.left():
+                            x0 = np.searchsorted(x, range.left()) - 1*ds
+                            x0 = np.clip(x0, a_min=0, a_max=len(x))
+                        if x[x1] < range.right():
+                            x1 = np.searchsorted(x, range.right()) + 2*ds
+                            x1 = np.clip(x1, a_min=0, a_max=len(x))
+                    
                         x = x[x0:x1]
                         y = y[x0:x1]
                     
@@ -591,8 +595,6 @@ class PlotDataItem(GraphicsObject):
                     
             self.xDisp = x
             self.yDisp = y
-        #print self.yDisp.shape, self.yDisp.min(), self.yDisp.max()
-        #print self.xDisp.shape, self.xDisp.min(), self.xDisp.max()
         return self.xDisp, self.yDisp
 
     def dataBounds(self, ax, frac=1.0, orthoRange=None):
@@ -651,9 +653,9 @@ class PlotDataItem(GraphicsObject):
         #self.yClean = None
         self.xDisp = None
         self.yDisp = None
-        self.curve.setData([])
-        self.scatter.setData([])
-            
+        self.curve.clear()
+        self.scatter.clear()
+
     def appendData(self, *args, **kargs):
         pass
     
@@ -679,10 +681,11 @@ class PlotDataItem(GraphicsObject):
             x2 = np.linspace(x[0], x[-1], len(x))
             y = np.interp(x2, x, y)
             x = x2
-        f = np.fft.fft(y) / len(y)
-        y = abs(f[1:len(f)/2])
-        dt = x[-1] - x[0]
-        x = np.linspace(0, 0.5*len(x)/dt, len(y))
+        n = y.size
+        f = np.fft.rfft(y) / n
+        d = float(x[-1]-x[0]) / (len(x)-1)
+        x = np.fft.rfftfreq(n, d)
+        y = np.abs(f)
         return x, y
     
 def dataType(obj):
@@ -797,7 +800,7 @@ def isSequence(obj):
         #if isinstance(arg, basestring):
             #return self.data[arg]
         #elif isinstance(arg, int):
-            #return dict([(k, v[arg]) for k, v in self.data.iteritems()])
+            #return dict([(k, v[arg]) for k, v in self.data.items()])
         #elif isinstance(arg, tuple):
             #arg = self._orderArgs(arg)
             #return self.data[arg[1]][arg[0]]

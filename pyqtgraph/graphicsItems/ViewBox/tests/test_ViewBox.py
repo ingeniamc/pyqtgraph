@@ -31,7 +31,6 @@ def init_viewbox():
     
     g = pg.GridItem()
     vb.addItem(g)
-    
     app.processEvents()
     
 def test_ViewBox():
@@ -64,7 +63,7 @@ def test_ViewBox():
     assertMapping(vb, view1, size1)
     
     # test tall resize
-    win.resize(400, 800)
+    win.resize(200, 400)
     app.processEvents()
     w = vb.geometry().width()
     h = vb.geometry().height()
