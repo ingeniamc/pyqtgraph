@@ -73,7 +73,14 @@ class Exporter(object):
             selectedExt = selectedExt.groups()[0].lower()
             if ext != selectedExt:
                 fileName = fileName + '.' + selectedExt.lstrip('.')
-        
+
+        # Check if filename is writable
+        try:
+            with open(fileName, "w"):
+                pass
+        except OSError:
+            return
+
         self.export(fileName=fileName, **self.fileDialog.opts)
         
     def getScene(self):
