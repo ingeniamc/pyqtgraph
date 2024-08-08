@@ -1,5 +1,5 @@
 from ..widgets.FileDialog import FileDialog
-from ..Qt import QtGui, QtCore, QtSvg
+from ..Qt import QtGui, QtCore, QtSvg, QtWidgets
 from ..python2_3 import asUnicode, basestring
 from ..GraphicsScene import GraphicsScene
 import os, re
@@ -12,6 +12,7 @@ class Exporter(object):
     """    
     allowCopy = False  # subclasses set this to True if they can use the copy buffer
     Exporters = []
+    DEFAULT_EXPORT_ERROR_MESSAGE = "The file cannot be saved."
     
     @classmethod
     def register(cls):
@@ -27,6 +28,9 @@ class Exporter(object):
         """
         object.__init__(self)
         self.item = item
+        self.error_dialog = QtWidgets.QMessageBox()
+        self.error_dialog.setIcon(QtWidgets.QMessageBox.Critical)
+        self.error_dialog.setWindowTitle("Export")
         
     def parameters(self):
         """Return the parameters used to configure this exporter."""
@@ -78,10 +82,16 @@ class Exporter(object):
         try:
             with open(fileName, "w"):
                 pass
-        except OSError:
-            return
-
-        self.export(fileName=fileName, **self.fileDialog.opts)
+        except OSError as e:
+            default_error_message = self.DEFAULT_EXPORT_ERROR_MESSAGE
+            if e.errno == 22:
+                default_error_message += " Invalid file name."
+            elif e.errno == 13:
+                default_error_message += " Insufficient permissions."
+            self.error_dialog.setText(default_error_message)
+            self.error_dialog.show()
+        else:
+            self.export(fileName=fileName, **self.fileDialog.opts)
         
     def getScene(self):
         if isinstance(self.item, GraphicsScene):
